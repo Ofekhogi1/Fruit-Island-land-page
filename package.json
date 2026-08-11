@@ -1,0 +1,22 @@
+{
+  "name": "fruit-island-landing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fruit Island landing page + secure content management panel",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "NODE_ENV=development node --watch server/index.js",
+    "admin:create": "node server/scripts/create-admin.js",
+    "admin:passwd": "node server/scripts/create-admin.js --reset"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "multer": "^2.0.1"
+  }
+}

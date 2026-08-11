@@ -1,0 +1,10 @@
+node_modules/
+.env
+.DS_Store
+
+# תוכן ומשתמשים נוצרים בזמן ריצה — לא נשמרים בגיט
+server/data/users.json
+server/data/content.json
+server/data/backups/
+assets/images/uploads/
+assets/video/uploads/

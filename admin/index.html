@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ניהול התוכן · Fruit Island</title>
+<link rel="stylesheet" href="/admin/assets/admin.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div>
+      <div class="side__brand">Fruit Island</div>
+      <div class="side__user" id="sideUser">טוען…</div>
+    </div>
+
+    <nav class="side__nav" id="sectionNav" aria-label="מקטעי התוכן"></nav>
+
+    <div class="side__foot">
+      <button class="btn btn--ghost-light btn--sm" type="button" id="mediaBtn">ספריית מדיה</button>
+      <button class="btn btn--ghost-light btn--sm" type="button" id="toolsBtn">גיבויים והגדרות</button>
+      <a class="btn btn--ghost-light btn--sm" href="/" target="_blank" rel="noopener">צפייה באתר</a>
+      <button class="btn btn--ghost-light btn--sm" type="button" id="logoutBtn">התנתקות</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h1 id="sectionTitle">ניהול התוכן</h1>
+    </header>
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<div class="savebar">
+  <div class="savebar__state" id="saveState">התוכן נטען…</div>
+  <button class="btn btn--ghost" type="button" id="reloadBtn">ביטול שינויים</button>
+  <button class="btn btn--gold" type="button" id="saveBtn" disabled>שמירה ופרסום</button>
+</div>
+
+<div class="modal hidden" id="mediaModal" role="dialog" aria-modal="true" aria-label="ספריית מדיה">
+  <div class="modal__box">
+    <div class="modal__head">
+      <h2>ספריית מדיה</h2>
+      <label class="btn btn--ghost btn--sm" for="mediaUpload">העלאת קובץ</label>
+      <input id="mediaUpload" type="file" class="hidden" accept="image/*,video/mp4,video/webm">
+      <button class="btn btn--ghost btn--sm" type="button" id="mediaClose">סגירה</button>
+    </div>
+    <div class="modal__body">
+      <p class="muted" id="mediaHint">תמונות עד 8MB · סרטונים עד 80MB · JPG, PNG, WebP, AVIF, GIF, MP4, WebM</p>
+      <div class="media-grid" id="mediaGrid"></div>
+    </div>
+    <div class="modal__foot">
+      <span class="muted" id="mediaStatus"></span>
+      <span style="flex:1"></span>
+      <button class="btn btn--danger btn--sm" type="button" id="mediaDelete" disabled>מחיקה</button>
+      <button class="btn btn--gold btn--sm" type="button" id="mediaChoose" disabled>בחירה</button>
+    </div>
+  </div>
+</div>
+
+<script src="/admin/assets/admin.js" defer></script>
+</body>
+</html>

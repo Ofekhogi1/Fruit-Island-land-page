@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>כניסה לניהול · Fruit Island</title>
+<link rel="stylesheet" href="/admin/assets/admin.css">
+</head>
+<body class="auth">
+  <main class="auth__card">
+    <p class="auth__brand">FRUIT ISLAND</p>
+    <h1>כניסה לניהול האתר</h1>
+    <p class="muted">האזור מיועד לצוות בלבד.</p>
+
+    <div id="alert" class="alert alert--bad hidden" role="alert"></div>
+
+    <form id="authForm" autocomplete="on" novalidate>
+      <div class="field">
+        <label for="username">שם משתמש</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="password">סיסמה</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn btn--gold btn--full" type="submit" id="submitBtn">כניסה</button>
+    </form>
+  </main>
+  <script src="/admin/assets/auth.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>הגדרת מנהל · Fruit Island</title>
+<link rel="stylesheet" href="/admin/assets/admin.css">
+</head>
+<body class="auth" data-mode="setup">
+  <main class="auth__card">
+    <p class="auth__brand">FRUIT ISLAND</p>
+    <h1>יצירת משתמש ניהול</h1>
+    <p class="muted">
+      פעולה חד־פעמית, אפשרית רק מהמחשב שעליו רץ השרת.
+      הסיסמה חייבת להכיל 12 תווים לפחות ולשלב אותיות גדולות, קטנות, ספרות או סימנים.
+    </p>
+
+    <div id="alert" class="alert alert--bad hidden" role="alert"></div>
+
+    <form id="authForm" novalidate>
+      <div class="field">
+        <label for="username">שם משתמש</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autocapitalize="none" spellcheck="false" placeholder="לדוגמה: manager">
+      </div>
+      <div class="field">
+        <label for="password">סיסמה</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" required>
+      </div>
+      <div class="field">
+        <label for="confirm">אימות סיסמה</label>
+        <input id="confirm" name="confirm" type="password" autocomplete="new-password" required>
+      </div>
+      <button class="btn btn--gold btn--full" type="submit" id="submitBtn">יצירת המשתמש</button>
+    </form>
+  </main>
+  <script src="/admin/assets/auth.js" defer></script>
+</body>
+</html>
