@@ -12,7 +12,6 @@ const config = require('./config');
 const sessions = require('./lib/sessions');
 const content = require('./lib/content');
 const users = require('./lib/users');
-const uploads = require('./lib/uploads');
 const adminRoutes = require('./routes/admin');
 
 /** גיבוב סקריפטים מוטבעים (JSON-LD) כדי לשמור על CSP קשיח ללא unsafe-inline */
@@ -36,6 +35,8 @@ function createApp() {
   if (config.trustProxy) app.set('trust proxy', 1);
 
   const scriptHashes = inlineScriptHashes(path.join(config.paths.root, 'index.html'));
+  /* מדיה שהועלתה דרך הפאנל מוגשת מה-CDN של Vercel Blob */
+  const blobOrigin = `https://*.${config.blob.host}`;
 
   app.use(
     helmet({
@@ -50,8 +51,8 @@ function createApp() {
           'script-src': ["'self'", ...scriptHashes],
           'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
-          'img-src': ["'self'", 'data:', 'blob:'],
-          'media-src': ["'self'", 'blob:'],
+          'img-src': ["'self'", 'data:', 'blob:', blobOrigin],
+          'media-src': ["'self'", 'blob:', blobOrigin],
           'connect-src': ["'self'"],
           'manifest-src': ["'self'"],
           ...(config.isProduction ? { 'upgrade-insecure-requests': [] } : {})
@@ -76,9 +77,13 @@ function createApp() {
 
   /* ───────── API ציבורי ───────── */
 
-  app.get('/api/content', (req, res) => {
-    res.set('Cache-Control', 'no-cache');
-    res.json({ content: content.getContent() });
+  app.get('/api/content', async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-cache');
+      return res.json({ content: await content.getContent() });
+    } catch (error) {
+      return next(error);
+    }
   });
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
@@ -156,9 +161,6 @@ function createApp() {
       error: status >= 500 ? 'שגיאת שרת — נסו שוב' : error.message
     });
   });
-
-  uploads.cleanTmp();
-  setInterval(() => uploads.cleanTmp(), 60 * 60 * 1000).unref();
 
   return app;
 }

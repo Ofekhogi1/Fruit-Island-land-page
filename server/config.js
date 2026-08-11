@@ -25,6 +25,10 @@ const ROOT = path.resolve(__dirname, '..');
 const isProduction = process.env.NODE_ENV === 'production';
 const truthy = (value) => value === '1' || value === 'true' || value === 'yes';
 
+/* על Vercel מערכת הקבצים לקריאה בלבד והאחסון עובר ל-Vercel Blob */
+const blobToken = process.env.BLOB_READ_WRITE_TOKEN || '';
+const isServerless = Boolean(process.env.VERCEL);
+
 const paths = {
   root: ROOT,
   assets: path.join(ROOT, 'assets'),
@@ -40,17 +44,43 @@ const paths = {
 };
 
 for (const dir of [paths.data, paths.backups, paths.imageUploads, paths.videoUploads, paths.tmpUploads]) {
-  fs.mkdirSync(dir, { recursive: true });
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch {
+    /* מערכת קבצים לקריאה בלבד — האחסון מגיע מ-Blob */
+  }
 }
+
+/* גבול גוף הבקשה של פונקציות Vercel הוא 4.5MB — מגבילים מתחתיו כדי להחזיר שגיאה ברורה */
+const maxImageBytes = isServerless ? 4 * 1024 * 1024 : 8 * 1024 * 1024;
+const maxVideoBytes = isServerless ? 4 * 1024 * 1024 : 80 * 1024 * 1024;
 
 module.exports = {
   isProduction,
+  isServerless,
   port: Number(process.env.PORT) || 8080,
   host: process.env.HOST || '0.0.0.0',
-  trustProxy: truthy(process.env.TRUST_PROXY),
-  forceSecureCookie: truthy(process.env.FORCE_SECURE_COOKIE),
+  trustProxy: truthy(process.env.TRUST_PROXY) || isServerless,
+  forceSecureCookie: truthy(process.env.FORCE_SECURE_COOKIE) || isServerless,
   publicOrigin: (process.env.PUBLIC_ORIGIN || '').replace(/\/+$/, ''),
   paths,
+
+  blob: {
+    token: blobToken,
+    enabled: Boolean(blobToken),
+    /* מארח ה-CDN של Blob — נדרש ל-CSP ולאימות נתיבי מדיה */
+    host: 'public.blob.vercel-storage.com'
+  },
+
+  /* סוד לחתימת עוגיות סשן. בענן חייבים ערך קבוע, אחרת כל מופע יחתום אחרת */
+  sessionSecret: process.env.SESSION_SECRET || '',
+
+  /* משתמש ניהול ממשתני סביבה — הדרך היחידה לאחסן פרטי התחברות ללא דיסק */
+  envAdmin: {
+    username: (process.env.ADMIN_USERNAME || '').trim().toLowerCase(),
+    passwordHash: (process.env.ADMIN_PASSWORD_HASH || '').trim(),
+    displayName: process.env.ADMIN_DISPLAY_NAME || ''
+  },
 
   session: {
     cookieName: 'fi_sid',
@@ -67,12 +97,12 @@ module.exports = {
 
   uploads: {
     image: {
-      maxBytes: 8 * 1024 * 1024,
+      maxBytes: maxImageBytes,
       dir: paths.imageUploads,
       publicBase: 'assets/images/uploads'
     },
     video: {
-      maxBytes: 80 * 1024 * 1024,
+      maxBytes: maxVideoBytes,
       dir: paths.videoUploads,
       publicBase: 'assets/video/uploads'
     }

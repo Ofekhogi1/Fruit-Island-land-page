@@ -3,13 +3,58 @@
 const crypto = require('crypto');
 const config = require('../config');
 
+const users = require('./users');
+
 /**
- * מאגר סשנים בזיכרון: מזהה הסשן אף פעם לא נשמר בצד הלקוח יחד עם מידע נוסף,
- * והוא מסתובב בכל התחברות כדי למנוע session fixation.
+ * סשנים חסרי מצב: כל הנתונים יושבים בעוגייה חתומה ב-HMAC-SHA256.
+ * זה מה שמאפשר לפאנל לעבוד גם על פונקציות serverless, שבהן כל בקשה
+ * עלולה להגיע למופע אחר ומאגר בזיכרון היה נעלם.
+ * ההגנות נשמרות: העוגייה מוחלפת בכל התחברות, קשורה לדפדפן שיצר אותה,
+ * ופוקעת גם בזמן מוחלט וגם בחוסר פעילות.
  */
-const sessions = new Map();
+
+let fallbackSecret = null;
+
+function secret() {
+  if (config.sessionSecret) return config.sessionSecret;
+  if (config.isServerless) {
+    const error = new Error('חסר SESSION_SECRET במשתני הסביבה — הפאנל לא יכול לאמת התחברות');
+    error.statusCode = 500;
+    throw error;
+  }
+  // פיתוח מקומי בלבד: מתחלף בכל הפעלה, ולכן מנתק סשנים אחרי הפעלה מחדש
+  if (!fallbackSecret) fallbackSecret = crypto.randomBytes(32).toString('hex');
+  return fallbackSecret;
+}
 
 const newToken = () => crypto.randomBytes(32).toString('base64url');
+
+const digest = (value) => crypto.createHash('sha256').update(String(value)).digest('base64url').slice(0, 22);
+
+const uaFingerprint = (req) => digest(String(req.get('user-agent') || '').slice(0, 200));
+
+function sign(payload) {
+  const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const mac = crypto.createHmac('sha256', secret()).update(body).digest('base64url');
+  return `${body}.${mac}`;
+}
+
+function unsign(token) {
+  const raw = String(token || '');
+  const dot = raw.lastIndexOf('.');
+  if (dot < 1) return null;
+
+  const body = raw.slice(0, dot);
+  const sent = Buffer.from(raw.slice(dot + 1));
+  const expected = Buffer.from(crypto.createHmac('sha256', secret()).update(body).digest('base64url'));
+  if (sent.length !== expected.length || !crypto.timingSafeEqual(sent, expected)) return null;
+
+  try {
+    return JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
 
 function clientIp(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
@@ -28,23 +73,9 @@ function baseCookieOptions(req) {
   };
 }
 
-function create(req, res, user) {
-  const sid = newToken();
-  const now = Date.now();
-  const session = {
-    sid,
-    userId: user.id,
-    username: user.username,
-    displayName: user.displayName,
-    csrf: newToken(),
-    createdAt: now,
-    lastSeen: now,
-    ip: clientIp(req),
-    userAgent: String(req.get('user-agent') || '').slice(0, 200)
-  };
-  sessions.set(sid, session);
-
-  res.cookie(config.session.cookieName, sid, {
+function issue(req, res, session) {
+  const token = sign(session);
+  res.cookie(config.session.cookieName, token, {
     ...baseCookieOptions(req),
     maxAge: config.session.absoluteTtlMs
   });
@@ -56,41 +87,60 @@ function create(req, res, user) {
   return session;
 }
 
+function create(req, res, user) {
+  const now = Date.now();
+  return issue(req, res, {
+    userId: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    csrf: newToken(),
+    createdAt: now,
+    lastSeen: now,
+    ua: uaFingerprint(req),
+    // טביעת אצבע של הסיסמה — שינוי סיסמה מבטל אוטומטית כל סשן קיים
+    pw: digest(user.password || '')
+  });
+}
+
 function destroy(req, res) {
-  const sid = req.cookies?.[config.session.cookieName];
-  if (sid) sessions.delete(sid);
   res.clearCookie(config.session.cookieName, baseCookieOptions(req));
   res.clearCookie(config.session.csrfCookieName, { ...baseCookieOptions(req), httpOnly: false });
 }
 
-function destroyAllForUser(userId) {
-  for (const [sid, session] of sessions) {
-    if (session.userId === userId) sessions.delete(sid);
-  }
-}
-
 function resolve(req) {
-  const sid = req.cookies?.[config.session.cookieName];
-  if (!sid) return null;
-  const session = sessions.get(sid);
+  const raw = req.cookies?.[config.session.cookieName];
+  if (!raw) return null;
+
+  const session = unsign(raw);
   if (!session) return null;
 
   const now = Date.now();
-  if (now - session.createdAt > config.session.absoluteTtlMs || now - session.lastSeen > config.session.idleTtlMs) {
-    sessions.delete(sid);
-    return null;
-  }
+  if (now - session.createdAt > config.session.absoluteTtlMs) return null;
+  if (now - session.lastSeen > config.session.idleTtlMs) return null;
+
   // קשירת הסשן לדפדפן שיצר אותו — מקטין ערך של עוגייה גנובה
-  if (session.userAgent !== String(req.get('user-agent') || '').slice(0, 200)) {
-    sessions.delete(sid);
-    return null;
-  }
-  session.lastSeen = now;
+  if (session.ua !== uaFingerprint(req)) return null;
+
+  // הסיסמה הוחלפה מאז ההתחברות
+  const current = users.credentialFingerprint(session.username);
+  if (!current || digest(current) !== session.pw) return null;
+
   return session;
 }
 
 function attach(req, res, next) {
-  req.session = resolve(req);
+  let session = null;
+  try {
+    session = resolve(req);
+  } catch {
+    session = null; // הגדרות חסרות — נטפל בזה במסלולי הניהול בלבד
+  }
+  req.session = session;
+
+  // מאריכים את חלון חוסר הפעילות, אך לא בכל בקשה בודדת
+  if (session && Date.now() - session.lastSeen > 60 * 1000) {
+    issue(req, res, { ...session, lastSeen: Date.now() });
+  }
   next();
 }
 
@@ -135,13 +185,4 @@ function requireCsrf(req, res, next) {
   return next();
 }
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [sid, session] of sessions) {
-    if (now - session.createdAt > config.session.absoluteTtlMs || now - session.lastSeen > config.session.idleTtlMs) {
-      sessions.delete(sid);
-    }
-  }
-}, 5 * 60 * 1000).unref();
-
-module.exports = { create, destroy, destroyAllForUser, attach, requireAuth, requireCsrf, clientIp };
+module.exports = { create, destroy, attach, requireAuth, requireCsrf, clientIp };

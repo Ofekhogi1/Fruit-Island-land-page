@@ -38,7 +38,12 @@ const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(se
 /* ───────── התקנה ראשונית ───────── */
 
 router.get('/setup', (req, res) => {
-  res.json({ needsSetup: !users.hasUsers(), allowed: isLoopback(req) });
+  res.json({
+    needsSetup: !users.hasUsers(),
+    allowed: isLoopback(req),
+    /* בענן אין דיסק לכתיבה — המשתמש מוגדר דרך משתני סביבה */
+    managed: config.isServerless
+  });
 });
 
 router.post('/setup', loginLimiter.middleware, async (req, res, next) => {
@@ -98,8 +103,12 @@ router.get('/schema', (req, res) => {
   res.json({ sections: SECTIONS, limits: config.uploads });
 });
 
-router.get('/content', (req, res) => {
-  res.json({ content: content.getContent() });
+router.get('/content', async (req, res, next) => {
+  try {
+    return res.json({ content: await content.getContent() });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 router.put('/content', writeLimiter.middleware, async (req, res, next) => {
@@ -120,8 +129,12 @@ router.post('/content/restore-defaults', writeLimiter.middleware, async (req, re
   }
 });
 
-router.get('/backups', (req, res) => {
-  res.json({ backups: content.listBackups() });
+router.get('/backups', async (req, res, next) => {
+  try {
+    return res.json({ backups: await content.listBackups() });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 router.post('/backups/restore', writeLimiter.middleware, async (req, res, next) => {
@@ -135,8 +148,13 @@ router.post('/backups/restore', writeLimiter.middleware, async (req, res, next) 
 
 /* ───────── מדיה ───────── */
 
-router.get('/media', (req, res) => {
-  res.json({ media: uploads.listMedia(), inUse: [...content.usedMediaPaths()] });
+router.get('/media', async (req, res, next) => {
+  try {
+    const [media, inUse] = await Promise.all([uploads.listMedia(), content.usedMediaPaths()]);
+    return res.json({ media, inUse: [...inUse] });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 router.post(
@@ -162,7 +180,8 @@ router.post(
 router.delete('/media', writeLimiter.middleware, async (req, res, next) => {
   try {
     const target = String(req.body?.path || '');
-    if (content.usedMediaPaths().has(target.replace(/^\.?\//, ''))) {
+    const inUse = await content.usedMediaPaths();
+    if (inUse.has(target) || inUse.has(target.replace(/^\.?\//, ''))) {
       return res.status(409).json({ error: 'הקובץ בשימוש בעמוד — החליפו אותו קודם ואז מחקו' });
     }
     await uploads.deleteMedia(target);
@@ -184,7 +203,7 @@ router.post('/password', writeLimiter.middleware, async (req, res, next) => {
     if (weak) return res.status(400).json({ error: weak });
 
     await users.upsertUser(user.username, newPassword, { displayName: user.displayName });
-    sessions.destroyAllForUser(user.id);
+    // הסשנים חתומים מול טביעת האצבע של הסיסמה, ולכן כולם מתבטלים מאליהם
     sessions.destroy(req, res);
     return res.json({ ok: true, message: 'הסיסמה עודכנה — התחברו מחדש' });
   } catch (error) {

@@ -178,6 +178,12 @@
     return wrap;
   }
 
+  /* קבצים מקומיים מגיעים כנתיב יחסי, ומהענן ככתובת מלאה */
+  function mediaSrc(value) {
+    var current = String(value || '');
+    return /^https?:\/\//i.test(current) ? current : '/' + current;
+  }
+
   function mediaField(field, value, onChange) {
     var wrap = el('div', 'field');
     wrap.appendChild(el('label', null, field.label));
@@ -194,12 +200,12 @@
         preview.textContent = 'אין קובץ';
       } else if (field.type === 'video') {
         var video = document.createElement('video');
-        video.src = '/' + current;
+        video.src = mediaSrc(current);
         video.muted = true;
         video.playsInline = true;
         preview.appendChild(video);
       } else {
-        preview.style.backgroundImage = 'url("/' + current.replace(/"/g, '') + '")';
+        preview.style.backgroundImage = 'url("' + mediaSrc(current).replace(/"/g, '') + '")';
       }
       pathLabel.textContent = current || '';
     }
@@ -373,7 +379,7 @@
       files.forEach(function (file) {
         var tile = el('div', 'media-tile');
         var thumb = el('div', 'media-tile__thumb');
-        if (file.kind === 'image') thumb.style.backgroundImage = 'url("/' + file.path + '")';
+        if (file.kind === 'image') thumb.style.backgroundImage = 'url("' + mediaSrc(file.path).replace(/"/g, '') + '")';
         else thumb.textContent = 'וידאו';
         tile.appendChild(thumb);
         tile.appendChild(el('div', 'media-tile__name', file.name));

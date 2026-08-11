@@ -1,14 +1,20 @@
 'use strict';
 
 const fs = require('fs');
-const fsp = require('fs/promises');
-const path = require('path');
-const crypto = require('crypto');
 
 const config = require('../config');
+const storage = require('./storage');
 const { SECTIONS, MAX_TEXT, MAX_LIST_ITEMS } = require('./schema');
 
 const SAFE_MEDIA = /^assets\/(images|video)\/[A-Za-z0-9._\-/]+$/;
+/* קבצים שהועלו ל-Vercel Blob מוגשים מכתובת מלאה על ה-CDN שלהם */
+const BLOB_MEDIA = new RegExp(
+  `^https://[a-z0-9-]+\\.${config.blob.host.replace(/\./g, '\\.')}/assets/(images|video)/[A-Za-z0-9._\\-/]+$`,
+  'i'
+);
+
+const isMediaPath = (value) => SAFE_MEDIA.test(value) || BLOB_MEDIA.test(value);
+
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
 class ValidationError extends Error {
@@ -26,8 +32,9 @@ const cleanText = (value, { multiline = false, max = MAX_TEXT } = {}) => {
 };
 
 function cleanMedia(value, field) {
-  const raw = cleanText(value, { max: 300 });
+  const raw = cleanText(value, { max: 500 });
   if (!raw) return '';
+  if (BLOB_MEDIA.test(raw)) return raw;
   const normalized = raw.replace(/^\.?\//, '');
   if (normalized.includes('..') || !SAFE_MEDIA.test(normalized)) {
     throw new ValidationError(`נתיב קובץ לא תקין בשדה "${field.label}"`);
@@ -38,7 +45,7 @@ function cleanMedia(value, field) {
 function cleanUrl(value, field) {
   const raw = cleanText(value, { max: 500 });
   if (!raw) return '';
-  if (raw.startsWith('#') || SAFE_MEDIA.test(raw.replace(/^\.?\//, ''))) return raw;
+  if (raw.startsWith('#') || isMediaPath(raw.replace(/^\.?\//, ''))) return raw;
   let parsed;
   try {
     parsed = new URL(raw);
@@ -115,51 +122,52 @@ function sanitizeContent(input) {
   return output;
 }
 
-function readJson(file) {
+const CONTENT_KEY = 'data/content.json';
+const BACKUP_PREFIX = 'data/backups';
+const CACHE_TTL_MS = 30 * 1000;
+
+/** ברירת המחדל נקראת מהקוד עצמו — קובץ לקריאה בלבד שנארז יחד עם השרת */
+function readDefaults() {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    return JSON.parse(fs.readFileSync(config.paths.defaultContentFile, 'utf8'));
   } catch {
-    return null;
+    return {};
   }
 }
 
 let cache = null;
+let cacheAt = 0;
 
-function loadDefaults() {
-  return readJson(config.paths.defaultContentFile) || {};
-}
-
-function getContent() {
-  if (cache) return cache;
-  const stored = readJson(config.paths.contentFile);
-  cache = sanitizeContent(stored || loadDefaults());
+async function getContent() {
+  // באחסון מרוחק מרעננים מדי פעם, כי מופע אחר עלול לשמור תוכן חדש
+  if (cache && (!storage.remote || Date.now() - cacheAt < CACHE_TTL_MS)) return cache;
+  const stored = await storage.readJson(CONTENT_KEY);
+  cache = sanitizeContent(stored || readDefaults());
+  cacheAt = Date.now();
   return cache;
 }
 
 async function pruneBackups(keep = 20) {
-  const files = (await fsp.readdir(config.paths.backups)).filter((name) => name.endsWith('.json')).sort();
-  for (const name of files.slice(0, Math.max(0, files.length - keep))) {
-    await fsp.unlink(path.join(config.paths.backups, name)).catch(() => {});
+  const keys = (await storage.list(BACKUP_PREFIX)).map((entry) => entry.key).sort();
+  for (const key of keys.slice(0, Math.max(0, keys.length - keep))) {
+    await storage.remove(key);
   }
 }
 
 async function saveContent(input, meta = {}) {
   const clean = sanitizeContent(input);
-  const serialized = JSON.stringify(clean, null, 2);
 
-  if (fs.existsSync(config.paths.contentFile)) {
+  const previous = await storage.readJson(CONTENT_KEY);
+  if (previous) {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    await fsp
-      .copyFile(config.paths.contentFile, path.join(config.paths.backups, `content-${stamp}.json`))
-      .catch(() => {});
-    await pruneBackups();
+    await storage.writeJson(`${BACKUP_PREFIX}/content-${stamp}.json`, previous).catch(() => {});
+    await pruneBackups().catch(() => {});
   }
 
-  const tmp = `${config.paths.contentFile}.${crypto.randomUUID()}.tmp`;
-  await fsp.writeFile(tmp, serialized, 'utf8');
-  await fsp.rename(tmp, config.paths.contentFile);
+  await storage.writeJson(CONTENT_KEY, clean);
 
   cache = clean;
+  cacheAt = Date.now();
   if (meta.username) {
     console.log(`[content] נשמר ע"י ${meta.username} בשעה ${new Date().toISOString()}`);
   }
@@ -167,44 +175,38 @@ async function saveContent(input, meta = {}) {
 }
 
 async function restoreDefaults(meta) {
-  return saveContent(loadDefaults(), meta);
+  return saveContent(readDefaults(), meta);
 }
 
-function listBackups() {
-  return fs
-    .readdirSync(config.paths.backups)
-    .filter((name) => /^content-.*\.json$/.test(name))
-    .sort()
-    .reverse()
+async function listBackups() {
+  const entries = await storage.list(BACKUP_PREFIX);
+  return entries
+    .filter((entry) => /^content-.*\.json$/.test(entry.name))
+    .sort((a, b) => b.name.localeCompare(a.name))
     .slice(0, 20)
-    .map((name) => ({
-      name,
-      savedAt: fs.statSync(path.join(config.paths.backups, name)).mtime.toISOString()
-    }));
+    .map((entry) => ({ name: entry.name, savedAt: entry.uploadedAt }));
 }
 
 async function restoreBackup(name, meta) {
   if (!/^content-[A-Za-z0-9\-]+\.json$/.test(name)) throw new ValidationError('שם גיבוי לא תקין');
-  const file = path.join(config.paths.backups, name);
-  if (!file.startsWith(config.paths.backups + path.sep) || !fs.existsSync(file)) {
-    throw new ValidationError('הגיבוי לא נמצא');
-  }
-  return saveContent(readJson(file) || {}, meta);
+  const data = await storage.readJson(`${BACKUP_PREFIX}/${name}`);
+  if (!data) throw new ValidationError('הגיבוי לא נמצא');
+  return saveContent(data, meta);
 }
 
 /** נתיבי מדיה שנמצאים בשימוש — כדי למנוע מחיקה של קובץ פעיל */
-function usedMediaPaths() {
+async function usedMediaPaths() {
   const used = new Set();
   const walk = (value) => {
     if (typeof value === 'string') {
-      if (SAFE_MEDIA.test(value)) used.add(value);
+      if (isMediaPath(value)) used.add(value);
     } else if (Array.isArray(value)) {
       value.forEach(walk);
     } else if (value && typeof value === 'object') {
       Object.values(value).forEach(walk);
     }
   };
-  walk(getContent());
+  walk(await getContent());
   return used;
 }
 

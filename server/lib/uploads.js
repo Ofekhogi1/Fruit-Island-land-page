@@ -1,12 +1,10 @@
 'use strict';
 
-const fs = require('fs');
-const fsp = require('fs/promises');
-const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
 
 const config = require('../config');
+const storage = require('./storage');
 
 const IMAGE_TYPES = {
   jpg: 'image/jpeg',
@@ -44,13 +42,9 @@ function kindOf(req) {
   return req.query.kind === 'video' ? 'video' : 'image';
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, config.paths.tmpUploads),
-  filename: (req, file, cb) => cb(null, `${crypto.randomUUID()}.part`)
-});
-
+/* שומרים בזיכרון ולא בדיסק — בענן אין תיקייה לכתיבה */
 const uploader = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
     files: 1,
     fields: 4,
@@ -84,94 +78,76 @@ async function finalize(req) {
   const settings = config.uploads[kind];
   const allowed = kind === 'video' ? VIDEO_TYPES : IMAGE_TYPES;
 
-  const cleanup = async () => {
-    await fsp.unlink(file.path).catch(() => {});
-  };
-
-  try {
-    if (file.size > settings.maxBytes) {
-      throw new UploadError(`הקובץ גדול מדי — עד ${Math.round(settings.maxBytes / (1024 * 1024))}MB`);
-    }
-
-    const handle = await fsp.open(file.path, 'r');
-    const head = Buffer.alloc(64);
-    await handle.read(head, 0, 64, 0);
-    await handle.close();
-
-    const ext = sniff(head);
-    if (!ext || !allowed[ext]) {
-      throw new UploadError('תוכן הקובץ לא תואם לסוג קובץ מותר');
-    }
-
-    const name = `${new Date().toISOString().slice(0, 10)}-${crypto.randomBytes(8).toString('hex')}.${ext}`;
-    const target = path.join(settings.dir, name);
-    if (!target.startsWith(settings.dir + path.sep)) throw new UploadError('נתיב יעד לא תקין');
-
-    await fsp.rename(file.path, target);
-    await fsp.chmod(target, 0o644).catch(() => {});
-
-    return {
-      path: `${settings.publicBase}/${name}`,
-      name,
-      size: file.size,
-      type: allowed[ext],
-      kind
-    };
-  } catch (error) {
-    await cleanup();
-    throw error;
+  if (file.size > settings.maxBytes) {
+    throw new UploadError(`הקובץ גדול מדי — עד ${Math.round(settings.maxBytes / (1024 * 1024))}MB`);
   }
+
+  const ext = sniff(file.buffer.subarray(0, 64));
+  if (!ext || !allowed[ext]) {
+    throw new UploadError('תוכן הקובץ לא תואם לסוג קובץ מותר');
+  }
+
+  const name = `${new Date().toISOString().slice(0, 10)}-${crypto.randomBytes(8).toString('hex')}.${ext}`;
+  const key = `${settings.publicBase}/${name}`;
+  const location = await storage.putBinary(key, file.buffer, allowed[ext]);
+
+  return {
+    path: location,
+    name,
+    size: file.size,
+    type: allowed[ext],
+    kind
+  };
 }
 
-function listMedia() {
-  const collect = (kind) => {
-    const settings = config.uploads[kind];
-    if (!fs.existsSync(settings.dir)) return [];
-    return fs
-      .readdirSync(settings.dir)
-      .filter((name) => /^[A-Za-z0-9._-]+$/.test(name) && !name.endsWith('.part'))
-      .map((name) => {
-        const stat = fs.statSync(path.join(settings.dir, name));
-        return {
-          kind,
-          name,
-          path: `${settings.publicBase}/${name}`,
-          size: stat.size,
-          uploadedAt: stat.mtime.toISOString()
-        };
-      })
-      .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
-  };
-  return [...collect('image'), ...collect('video')];
+async function listMedia() {
+  const groups = await Promise.all(
+    Object.keys(config.uploads).map(async (kind) => {
+      const entries = await storage.list(config.uploads[kind].publicBase);
+      return entries.map((entry) => ({
+        kind,
+        name: entry.name,
+        path: entry.url,
+        size: entry.size,
+        uploadedAt: entry.uploadedAt
+      }));
+    })
+  );
+  return groups.flat().sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+}
+
+/** ממיר נתיב ציבורי — יחסי או כתובת Blob מלאה — למפתח אחסון מאומת */
+function storageKeyFor(publicPath) {
+  let value = String(publicPath || '').trim();
+
+  if (/^https?:\/\//i.test(value)) {
+    let parsed;
+    try {
+      parsed = new URL(value);
+    } catch {
+      throw new UploadError('נתיב לא תקין');
+    }
+    if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith(`.${config.blob.host}`)) {
+      throw new UploadError('אפשר למחוק רק קבצים שהועלו דרך הפאנל');
+    }
+    value = parsed.pathname.replace(/^\//, '');
+  } else {
+    value = value.replace(/^\.?\//, '');
+  }
+
+  const settings = Object.values(config.uploads).find((entry) => value.startsWith(`${entry.publicBase}/`));
+  if (!settings) throw new UploadError('אפשר למחוק רק קבצים שהועלו דרך הפאנל');
+
+  const name = value.slice(settings.publicBase.length + 1);
+  if (!/^[A-Za-z0-9._-]+$/.test(name)) throw new UploadError('שם קובץ לא תקין');
+
+  return `${settings.publicBase}/${name}`;
 }
 
 async function deleteMedia(publicPath) {
-  const normalized = String(publicPath || '').replace(/^\.?\//, '');
-  const entry = Object.values(config.uploads).find((settings) => normalized.startsWith(`${settings.publicBase}/`));
-  if (!entry) throw new UploadError('אפשר למחוק רק קבצים שהועלו דרך הפאנל');
-
-  const name = path.basename(normalized);
-  if (!/^[A-Za-z0-9._-]+$/.test(name)) throw new UploadError('שם קובץ לא תקין');
-
-  const target = path.resolve(entry.dir, name);
-  if (!target.startsWith(path.resolve(entry.dir) + path.sep)) throw new UploadError('נתיב לא מורשה');
-  if (!fs.existsSync(target)) throw new UploadError('הקובץ לא נמצא');
-
-  await fsp.unlink(target);
+  const key = storageKeyFor(publicPath);
+  if (!(await storage.exists(key))) throw new UploadError('הקובץ לא נמצא');
+  await storage.remove(key);
 }
 
-/** ניקוי שאריות העלאות שנקטעו */
-function cleanTmp() {
-  if (!fs.existsSync(config.paths.tmpUploads)) return;
-  const cutoff = Date.now() - 60 * 60 * 1000;
-  for (const name of fs.readdirSync(config.paths.tmpUploads)) {
-    const file = path.join(config.paths.tmpUploads, name);
-    try {
-      if (fs.statSync(file).mtimeMs < cutoff) fs.unlinkSync(file);
-    } catch {
-      /* מתעלמים */
-    }
-  }
-}
-
-module.exports = { uploader, finalize, listMedia, deleteMedia, cleanTmp, UploadError };
+module.exports = { uploader, finalize, listMedia, deleteMedia, UploadError };

@@ -1,10 +1,13 @@
 'use strict';
 
 const readline = require('readline');
+const crypto = require('crypto');
 const { stdin, stdout } = require('process');
 
 const users = require('../lib/users');
-const { validateStrength, MIN_LENGTH } = require('../lib/passwords');
+const { validateStrength, MIN_LENGTH, hashPassword } = require('../lib/passwords');
+
+const hashOnly = process.argv.includes('--hash');
 
 function ask(question, { silent = false } = {}) {
   const rl = readline.createInterface({ input: stdin, output: stdout, terminal: true });
@@ -25,7 +28,11 @@ function ask(question, { silent = false } = {}) {
 }
 
 (async () => {
-  console.log('יצירת / עדכון משתמש ניהול ל-Fruit Island');
+  console.log(
+    hashOnly
+      ? 'יצירת משתני סביבה למשתמש ניהול בענן'
+      : 'יצירת / עדכון משתמש ניהול ל-Fruit Island'
+  );
   console.log(`הסיסמה חייבת להיות באורך ${MIN_LENGTH} תווים לפחות ולשלב סוגי תווים שונים.\n`);
 
   const username = await ask('שם משתמש: ');
@@ -43,6 +50,20 @@ function ask(question, { silent = false } = {}) {
   }
 
   try {
+    if (hashOnly) {
+      const normalized = username.trim().toLowerCase();
+      if (!/^[a-z0-9._-]{3,32}$/.test(normalized)) {
+        throw new Error('שם המשתמש חייב להכיל 3–32 תווים באנגלית, ספרות או . _ -');
+      }
+      const hash = await hashPassword(password);
+      console.log('\nהוסיפו את המשתנים הבאים ב-Vercel → Settings → Environment Variables:\n');
+      console.log(`ADMIN_USERNAME=${normalized}`);
+      console.log(`ADMIN_PASSWORD_HASH=${hash}`);
+      console.log(`SESSION_SECRET=${crypto.randomBytes(32).toString('hex')}`);
+      console.log('\nשמרו את הערכים האלה בסוד — הם מעניקים גישה מלאה לפאנל.');
+      return;
+    }
+
     const user = await users.upsertUser(username, password);
     console.log(`\nהמשתמש "${user.username}" נשמר בהצלחה בקובץ ${users.usersFile}`);
     console.log('התחברו בכתובת /admin');
