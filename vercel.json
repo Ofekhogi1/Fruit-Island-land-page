@@ -5,11 +5,5 @@
       "includeFiles": "{index.html,assets/**,admin/**,server/**}"
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [{ "key": "x-fi-config", "value": "v2" }]
-    }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
 }
