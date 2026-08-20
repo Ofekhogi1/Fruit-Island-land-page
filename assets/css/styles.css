@@ -795,6 +795,14 @@ ul,ol{margin:0;padding:0;list-style:none}
     background:var(--gold-500);
     color:var(--emerald-900)!important;border-radius:var(--r-sm);font-weight:700;font-size:14.5px;
   }
+
+  /* The bar is the single contact surface on phones, so the duplicates go:
+     the floating bubble sat ~40px above the bar's own WhatsApp button, and the
+     header repeated both the CTA and the phone. Header keeps logo + burger. */
+  .wa-float{display:none}
+  .site-head__cta .btn{display:none}
+  .link-phone{display:none}
+
   .site-foot{padding-bottom:70px}
 }
 
