@@ -302,17 +302,20 @@ ul,ol{margin:0;padding:0;list-style:none}
 
 /* Sunburst rays — the crate-label device */
 .hero__deco::before{
-  content:"";position:absolute;inset-inline-start:50%;top:38%;
+  content:"";position:absolute;left:50%;top:38%;
   width:200vmax;aspect-ratio:1;translate:-50% -50%;border-radius:50%;
-  background:repeating-conic-gradient(from 0deg,rgba(255,207,74,.13) 0deg 4.5deg,transparent 4.5deg 9deg);
-  -webkit-mask-image:radial-gradient(circle,#000 8%,rgba(0,0,0,.5) 32%,transparent 58%);
-  mask-image:radial-gradient(circle,#000 8%,rgba(0,0,0,.5) 32%,transparent 58%);
+  /* Tuned once the RTL centring bug was fixed and these became visible:
+     the mask now hollows out the middle so the rays halo the headline
+     instead of running straight through it. */
+  background:repeating-conic-gradient(from 0deg,rgba(255,207,74,.085) 0deg 4.5deg,transparent 4.5deg 9deg);
+  -webkit-mask-image:radial-gradient(circle,transparent 5%,rgba(0,0,0,.5) 26%,rgba(0,0,0,.32) 46%,transparent 64%);
+  mask-image:radial-gradient(circle,transparent 5%,rgba(0,0,0,.5) 26%,rgba(0,0,0,.32) 46%,transparent 64%);
   animation:sunspin 160s linear infinite;
 }
 @keyframes sunspin{to{rotate:360deg}}
 
 .hero__fan{
-  position:absolute;inset-inline-start:50%;top:-6%;translate:-50% 0;
+  position:absolute;left:50%;top:-6%;translate:-50% 0;
   width:min(1000px,150%);color:rgba(255,231,168,.14);
 }
 
@@ -354,11 +357,11 @@ ul,ol{margin:0;padding:0;list-style:none}
 .hero__trust li::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold-400)}
 
 .hero__scroll{
-  position:absolute;inset-inline-start:50%;bottom:26px;translate:-50% 0;
+  position:absolute;left:50%;bottom:26px;translate:-50% 0;
   width:26px;height:44px;border:2px solid rgba(255,231,168,.45);border-radius:999px;
 }
 .hero__scroll span{
-  position:absolute;inset-inline-start:50%;top:9px;translate:-50% 0;
+  position:absolute;left:50%;top:9px;translate:-50% 0;
   width:4px;height:8px;border-radius:2px;background:var(--gold-400);
   animation:scrollDot 1.9s var(--ease) infinite;
 }
@@ -546,7 +549,9 @@ ul,ol{margin:0;padding:0;list-style:none}
 .grid-2--areas{align-items:start}
 .area-list{display:grid;gap:10px;margin:26px 0 18px}
 .area-list li{
-  position:relative;padding:12px 44px 12px 16px;
+  /* Logical padding: the roomy side must be the one holding the dot and the
+     gold rule (inline-end), otherwise wrapped lines run under the marker. */
+  position:relative;padding-block:12px;padding-inline-start:16px;padding-inline-end:44px;
   background:var(--cream-50);border-radius:var(--r-sm);
   border:1.5px solid var(--keyline);
   border-inline-end:5px solid var(--gold-500);
@@ -598,7 +603,7 @@ ul,ol{margin:0;padding:0;list-style:none}
   border:1.5px solid var(--emerald-800);border-radius:50%;transition:background .3s,transform .3s var(--ease);
 }
 .acc__btn i::before,.acc__btn i::after{
-  content:"";position:absolute;inset-inline-start:50%;top:50%;translate:-50% -50%;
+  content:"";position:absolute;left:50%;top:50%;translate:-50% -50%;
   background:var(--emerald-800);transition:opacity .25s,background .25s;
 }
 .acc__btn i::before{width:10px;height:2px}
@@ -618,14 +623,14 @@ ul,ol{margin:0;padding:0;list-style:none}
 }
 .quote__deco{position:absolute;inset:0;z-index:-1;pointer-events:none}
 .quote__deco::before{
-  content:"";position:absolute;inset-inline-start:50%;top:50%;
+  content:"";position:absolute;left:50%;top:50%;
   width:190vmax;aspect-ratio:1;translate:-50% -50%;border-radius:50%;
   background:repeating-conic-gradient(from 0deg,rgba(240,118,27,.12) 0deg 5deg,transparent 5deg 10deg);
   -webkit-mask-image:radial-gradient(circle,#000 6%,transparent 52%);
   mask-image:radial-gradient(circle,#000 6%,transparent 52%);
   animation:sunspin 200s linear infinite reverse;
 }
-.quote__fan{position:absolute;inset-inline-start:50%;top:-14%;translate:-50% 0;width:min(1100px,160%);color:rgba(255,231,168,.12)}
+.quote__fan{position:absolute;left:50%;top:-14%;translate:-50% 0;width:min(1100px,160%);color:rgba(255,231,168,.12)}
 .quote .orb--mango{width:min(250px,32vw);inset-inline-end:-6vw;top:8%}
 .quote .orb--berry{width:min(210px,28vw);inset-inline-start:-5vw;bottom:6%}
 .grid-2--quote{align-items:center}
@@ -802,6 +807,20 @@ ul,ol{margin:0;padding:0;list-style:none}
   .wa-float{display:none}
   .site-head__cta .btn{display:none}
   .link-phone{display:none}
+
+  /* Touch targets. Inline links measure 20-32px tall, under the 44px minimum,
+     and several of them are phone numbers. A pseudo-element grows the tappable
+     area without moving anything on the page. */
+  .link-arrow,.link-u,.foot__col a,
+  a[href^="tel:"]:not(.btn):not(.link-phone),
+  a[href^="mailto:"]:not(.btn){position:relative}
+  .link-arrow::before,.link-u::before,.foot__col a::before,
+  a[href^="tel:"]:not(.btn):not(.link-phone)::before,
+  a[href^="mailto:"]:not(.btn)::before{
+    content:"";position:absolute;inset:-13px -8px;
+  }
+  /* the bar's own buttons are already 46px — no overhang above the bar */
+  .mobile-bar a::before{content:none}
 
   .site-foot{padding-bottom:70px}
 }
