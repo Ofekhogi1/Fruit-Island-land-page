@@ -21,8 +21,8 @@
     "facebook": "https://www.facebook.com/share/19T1r6KzCg/"
   },
   "hero": {
-    "video": "assets/video/hero.mp4",
-    "poster": "assets/images/hero-poster.jpg",
+    "video": "",
+    "poster": "",
     "eyebrow": "Fruit Island · מעל 10 שנות ניסיון",
     "titleLine1": "קיאק פירות",
     "titleLine2": "שגונב את ההצגה",
@@ -62,14 +62,14 @@
     "title": "ככה זה נראה באירוע אמיתי",
     "sub": "בחרנו כמה מהעבודות האחרונות שלנו. כל אחת נבנתה מאפס סביב אירוע אחר.",
     "items": [
-      { "image": "assets/images/gallery/gallery-01.jpg", "label": "קיאק פירות · חתונה", "alt": "קיאק פירות גדול באירוע חתונה" },
-      { "image": "assets/images/gallery/gallery-02.jpg", "label": "מגש פירות · יום הולדת", "alt": "מגש פירות מעוצב ליום הולדת" },
-      { "image": "assets/images/gallery/gallery-03.jpg", "label": "סידור פירות · ברית", "alt": "סידור פירות בברית" },
-      { "image": "assets/images/gallery/gallery-04.jpg", "label": "שולחן פירות · אירוע עסקי", "alt": "שולחן פירות באירוע עסקי" },
-      { "image": "assets/images/gallery/gallery-05.jpg", "label": "קיאק פירות · בת מצווה", "alt": "קיאק פירות בבת מצווה" },
-      { "image": "assets/images/gallery/gallery-06.jpg", "label": "מגש פירות · חג", "alt": "מגש פירות לחג" },
-      { "image": "assets/images/gallery/gallery-07.jpg", "label": "פרט מקרוב · חיתוך", "alt": "תקריב חיתוך פירות טריים" },
-      { "image": "assets/images/gallery/gallery-08.jpg", "label": "מארז מתנה", "alt": "מארז פירות ושוקולד במתנה" }
+      { "image": "assets/images/gallery/gallery-01.jpg", "label": "קיאק פירות · אולם אירועים", "alt": "קיאק פירות עמוס בפירות עונתיים חתוכים באולם אירועים" },
+      { "image": "assets/images/gallery/gallery-02.jpg", "label": "מגש פירות מלבני ארוך", "alt": "מגש פירות מלבני ארוך עם פסיפלורה, פיטאיה, ענבים ותפוזים" },
+      { "image": "assets/images/gallery/gallery-03.jpg", "label": "מגש אובלי גדול", "alt": "מגש פירות אובלי גדול עם ענבים, פיטאיה, מלון ואננס" },
+      { "image": "assets/images/gallery/gallery-04.jpg", "label": "מגש פירות ארוך", "alt": "מגש פירות מלבני ארוך עם פסיפלורה, קיווי, אבטיח ותפוזים" },
+      { "image": "assets/images/gallery/gallery-05.jpg", "label": "תקריב · מגש עם מארז שוקולד", "alt": "תקריב מגש פירות אובלי עם פסיפלורה, אשכולית ומארז שוקולד" },
+      { "image": "assets/images/gallery/gallery-06.jpg", "label": "שולחן אירוע · מגשים ומארזים", "alt": "שולחן אירוע ערוך עם מגשי פירות מעוצבים ומארזי מתנה" },
+      { "image": "assets/images/gallery/gallery-07.jpg", "label": "סירות פירות · מתנה", "alt": "שתי סירות פירות ארוזות במתנה עם סרט אדום" },
+      { "image": "assets/images/gallery/gallery-08.jpg", "label": "סבב מגשים · אירוע גדול", "alt": "עשרות מגשי פירות מעוצבים מוכנים לאירוע גדול" }
     ],
     "noteText": "עוד עשרות עבודות מתפרסמות אצלנו באינסטגרם",
     "noteLinkText": "fruit_island__",

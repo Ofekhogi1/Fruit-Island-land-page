@@ -124,7 +124,7 @@
 
   /* ───────── מקטעים חוזרים ───────── */
 
-  var GALLERY_VARIANTS = ['g-card--tall', '', '', 'g-card--wide', '', '', 'g-card--tall', ''];
+  var GALLERY_VARIANTS = ['g-card--tall'];
 
   var renderers = {
     'marquee.items': function (container, items) {

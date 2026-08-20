@@ -82,8 +82,9 @@
 <!-- ═══════════ HERO ═══════════ -->
 <section class="hero" id="hero">
   <div class="hero__media">
-    <video class="hero__video" autoplay muted loop playsinline preload="metadata" poster="assets/images/hero-poster.jpg" data-cms-attr="poster:hero.poster" aria-hidden="true">
-      <source src="assets/video/hero.mp4" data-cms-src="hero.video" type="video/mp4">
+    <img class="hero__art" src="assets/images/hero-scene.svg" alt="" aria-hidden="true">
+    <video class="hero__video" autoplay muted loop playsinline preload="metadata" data-cms-attr="poster:hero.poster" aria-hidden="true">
+      <source data-cms-src="hero.video" type="video/mp4">
     </video>
     <div class="hero__scrim"></div>
   </div>
@@ -155,17 +156,17 @@
 
     <div class="signature__media reveal" data-delay="2">
       <figure class="arch ph" data-label="קיאק פירות באירוע">
-        <img src="assets/images/signature-kayak.jpg" data-cms-src="signature.image" alt="קיאק פירות מעוצב של Fruit Island על שולחן אירוע" loading="lazy" width="720" height="900">
+        <img src="assets/images/signature-kayak.jpg" data-cms-src="signature.image" alt="שני קיאקי פירות עמוסים בפירות עונתיים חתוכים באירוע גן" loading="lazy" width="880" height="1100">
       </figure>
       <figure class="arch arch--sm ph" data-label="פרט מקרוב" data-parallax="0.05">
-        <img src="assets/images/signature-detail.jpg" data-cms-src="signature.imageDetail" alt="תקריב של חיתוך פירות עונתיים במגש Fruit Island" loading="lazy" width="420" height="420">
+        <img src="assets/images/signature-detail.jpg" data-cms-src="signature.imageDetail" alt="תקריב של פירות עונתיים חתוכים — פסיפלורה, קיווי, תות ואבטיח" loading="lazy" width="760" height="760">
       </figure>
       <span class="badge-round" aria-hidden="true"><b data-cms="signature.badgeNumber">10+</b><small data-cms="signature.badgeText">שנות ניסיון</small></span>
     </div>
   </div>
 </section>
 
-<div class="scallop" aria-hidden="true"></div>
+<div class="scallop" aria-hidden="true"><img class="scallop__boat" src="assets/images/sailboat.svg" alt=""></div>
 
 <!-- ═══════════ GALLERY ═══════════ -->
 <section class="section section--emerald gallery" id="gallery">
@@ -178,14 +179,14 @@
     </header>
 
     <div class="gallery__grid" data-cms-repeat="gallery.items">
-      <figure class="g-card g-card--tall ph reveal" data-label="קיאק פירות · חתונה"><img src="assets/images/gallery/gallery-01.jpg" alt="קיאק פירות גדול באירוע חתונה" loading="lazy"></figure>
-      <figure class="g-card ph reveal" data-delay="1" data-label="מגש פירות · יום הולדת"><img src="assets/images/gallery/gallery-02.jpg" alt="מגש פירות מעוצב ליום הולדת" loading="lazy"></figure>
-      <figure class="g-card ph reveal" data-delay="2" data-label="סידור פירות · ברית"><img src="assets/images/gallery/gallery-03.jpg" alt="סידור פירות בברית" loading="lazy"></figure>
-      <figure class="g-card g-card--wide ph reveal" data-delay="1" data-label="שולחן פירות · אירוע עסקי"><img src="assets/images/gallery/gallery-04.jpg" alt="שולחן פירות באירוע עסקי" loading="lazy"></figure>
-      <figure class="g-card ph reveal" data-delay="2" data-label="קיאק פירות · בת מצווה"><img src="assets/images/gallery/gallery-05.jpg" alt="קיאק פירות בבת מצווה" loading="lazy"></figure>
-      <figure class="g-card ph reveal" data-delay="3" data-label="מגש פירות · חג"><img src="assets/images/gallery/gallery-06.jpg" alt="מגש פירות לחג" loading="lazy"></figure>
-      <figure class="g-card g-card--tall ph reveal" data-delay="2" data-label="פרט מקרוב · חיתוך"><img src="assets/images/gallery/gallery-07.jpg" alt="תקריב חיתוך פירות טריים" loading="lazy"></figure>
-      <figure class="g-card ph reveal" data-delay="3" data-label="מארז מתנה"><img src="assets/images/gallery/gallery-08.jpg" alt="מארז פירות ושוקולד במתנה" loading="lazy"></figure>
+      <figure class="g-card g-card--tall ph reveal" data-label="קיאק פירות · אולם אירועים"><img src="assets/images/gallery/gallery-01.jpg" alt="קיאק פירות עמוס בפירות עונתיים חתוכים באולם אירועים" loading="lazy"></figure>
+      <figure class="g-card g-card--tall ph reveal" data-delay="1" data-label="מגש פירות מלבני ארוך"><img src="assets/images/gallery/gallery-02.jpg" alt="מגש פירות מלבני ארוך עם פסיפלורה, פיטאיה, ענבים ותפוזים" loading="lazy"></figure>
+      <figure class="g-card g-card--tall ph reveal" data-delay="2" data-label="מגש אובלי גדול"><img src="assets/images/gallery/gallery-03.jpg" alt="מגש פירות אובלי גדול עם ענבים, פיטאיה, מלון ואננס" loading="lazy"></figure>
+      <figure class="g-card g-card--tall ph reveal" data-delay="3" data-label="מגש פירות ארוך"><img src="assets/images/gallery/gallery-04.jpg" alt="מגש פירות מלבני ארוך עם פסיפלורה, קיווי, אבטיח ותפוזים" loading="lazy"></figure>
+      <figure class="g-card g-card--tall ph reveal" data-label="תקריב · מגש עם מארז שוקולד"><img src="assets/images/gallery/gallery-05.jpg" alt="תקריב מגש פירות אובלי עם פסיפלורה, אשכולית ומארז שוקולד" loading="lazy"></figure>
+      <figure class="g-card g-card--tall ph reveal" data-delay="1" data-label="שולחן אירוע · מגשים ומארזים"><img src="assets/images/gallery/gallery-06.jpg" alt="שולחן אירוע ערוך עם מגשי פירות מעוצבים ומארזי מתנה" loading="lazy"></figure>
+      <figure class="g-card g-card--tall ph reveal" data-delay="2" data-label="סירות פירות · מתנה"><img src="assets/images/gallery/gallery-07.jpg" alt="שתי סירות פירות ארוזות במתנה עם סרט אדום" loading="lazy"></figure>
+      <figure class="g-card g-card--tall ph reveal" data-delay="3" data-label="סבב מגשים · אירוע גדול"><img src="assets/images/gallery/gallery-08.jpg" alt="עשרות מגשי פירות מעוצבים מוכנים לאירוע גדול" loading="lazy"></figure>
     </div>
 
     <p class="gallery__note reveal">
@@ -206,7 +207,7 @@
 
     <div class="offer__grid" data-cms-repeat="offer.items">
       <article class="o-card reveal">
-        <figure class="o-card__img arch ph" data-label="קיאק פירות"><img src="assets/images/offer-kayak.jpg" alt="קיאק פירות של Fruit Island" loading="lazy"></figure>
+        <figure class="o-card__img arch ph" data-label="קיאק פירות"><img src="assets/images/offer-kayak.jpg" alt="קיאק פירות כחול עמוס באבטיח, מנגו וענבים על דשא" loading="lazy"></figure>
         <h3>קיאקי פירות</h3>
         <p>המיצג שגונב את ההצגה. סירה שלמה של פירות עונתיים, בגדלים שונים, שנבנית סביב האירוע והצבעוניות שלו.</p>
         <ul class="mini-list">
@@ -230,7 +231,7 @@
       </article>
 
       <article class="o-card reveal" data-delay="2">
-        <figure class="o-card__img arch ph" data-label="תוספות ומארזים"><img src="assets/images/offer-extras.jpg" alt="מארזי שוקולד ובלונים לצד מגש פירות" loading="lazy"></figure>
+        <figure class="o-card__img arch ph" data-label="תוספות ומארזים"><img src="assets/images/offer-extras.jpg" alt="מארז מתנה עם סושי פירות ופירות מצופים בשוקולד" loading="lazy"></figure>
         <h3>התוספות שמשלימות</h3>
         <p>הפרטים שהופכים משלוח למתנה: בלונים, מארזי שוקולד ופררו רושה, כרטיס ברכה ומיתוג אישי לאירוע.</p>
         <ul class="mini-list">

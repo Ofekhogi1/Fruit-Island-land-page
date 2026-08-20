@@ -56,6 +56,7 @@
   --r-sm:8px;
   --r-md:14px;
   --r-lg:20px;
+  --r-card:26px;          /* image frames — soft rounded rectangle */
   --head-h:74px;
 
   --ease:cubic-bezier(.22,.61,.36,1);
@@ -188,23 +189,35 @@ ul,ol{margin:0;padding:0;list-style:none}
 .hr-gold{border:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold-500),transparent);margin:22px 0}
 
 .scallop{
-  height:34px;margin-bottom:-1px;
+  height:54px;margin-bottom:-1px;position:relative;overflow:hidden;
   background:
+    /* scalloped crest on top, solid band beneath it — keeps the cut-outs readable */
     radial-gradient(circle at 50% 0,transparent 16px,var(--emerald-800) 17px) 0 0/34px 34px repeat-x,
-    transparent;
+    linear-gradient(var(--emerald-800),var(--emerald-800)) 0 34px/100% 20px no-repeat;
 }
+/* a fruit kayak sailing the divider — slow enough to read as a detail, not a gimmick */
+.scallop__boat{
+  position:absolute;bottom:1px;inset-inline-start:0;width:112px;height:auto;opacity:.55;
+  animation:sail-across 34s linear infinite;
+}
+/* RTL page: inset-inline-start is the right edge, so the boat sails right -> left */
+@keyframes sail-across{
+  from{transform:translateX(130px)}
+  to{transform:translateX(calc(-100vw - 130px))}
+}
+@media (prefers-reduced-motion:reduce){.scallop__boat{animation:none;opacity:0}}
 
 /* Crate arch — the label silhouette */
 .arch{
   margin:0;overflow:hidden;position:relative;
-  border-radius:999px 999px var(--r-md) var(--r-md);
+  border-radius:var(--r-card);
   border:2px solid var(--emerald-800);
   box-shadow:var(--shadow-soft);
 }
 .arch::after{
   content:"";position:absolute;inset:7px;pointer-events:none;
   border:1px solid rgba(253,248,238,.55);
-  border-radius:999px 999px 8px 8px;
+  border-radius:calc(var(--r-card) - 7px);
 }
 .arch img{width:100%;height:100%;object-fit:cover}
 
@@ -276,7 +289,9 @@ ul,ol{margin:0;padding:0;list-style:none}
   overflow:hidden;isolation:isolate;
 }
 .hero__media{position:absolute;inset:0;z-index:-2}
-.hero__video{width:100%;height:100%;object-fit:cover}
+/* drifting vector scene behind the hero — stands in for the video slot */
+.hero__art,.hero__video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hero__video{background:transparent}
 .hero__scrim{
   position:absolute;inset:0;
   background:
@@ -302,7 +317,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 }
 
 /* Flat printed fruit discs */
-.orb{position:absolute;border-radius:50%;opacity:.2}
+.orb{position:absolute;border-radius:50%;opacity:.10}   /* toned down: the hero scene now carries the decoration */
 .orb::after{
   content:"";position:absolute;inset:0;border-radius:50%;
   background:var(--halftone) 0 0/5px 5px repeat;opacity:.5;
@@ -419,11 +434,11 @@ ul,ol{margin:0;padding:0;list-style:none}
 }
 .g-card{
   margin:0;overflow:hidden;position:relative;
-  border-radius:var(--r-sm);
+  border-radius:var(--r-card);
   border:2px solid var(--emerald-900);
   background:var(--emerald-900);
 }
-.g-card--tall{grid-row:span 2;border-radius:999px 999px var(--r-sm) var(--r-sm)}
+.g-card--tall{grid-row:span 2}
 .g-card--wide{grid-column:span 2}
 .g-card img{width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease),filter .5s}
 .g-card::after{
@@ -450,7 +465,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 .o-card:hover{transform:translateY(-5px);box-shadow:var(--shadow-lift)}
 .o-card--feature{background:var(--cream-100);border-color:var(--vermillion-ink)}
 .o-card--feature::before{border-color:rgba(182,47,23,.3)}
-.o-card__img{aspect-ratio:4/3.4;margin-bottom:22px;border-radius:999px 999px var(--r-sm) var(--r-sm);position:relative;z-index:1}
+.o-card__img{aspect-ratio:4/3.4;margin-bottom:22px;border-radius:var(--r-card);position:relative;z-index:1}
 .o-card h3{font-size:clamp(20px,2vw,26px);margin-bottom:10px;color:var(--emerald-800);position:relative;z-index:1}
 .o-card p{color:var(--ink-soft);font-size:15.5px;position:relative;z-index:1}
 .mini-list{margin:16px 0 20px;display:grid;gap:9px;font-size:14.5px;color:var(--ink-soft);position:relative;z-index:1}

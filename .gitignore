@@ -8,3 +8,6 @@ server/data/content.json
 server/data/backups/
 assets/images/uploads/
 assets/video/uploads/
+
+# מקורות התמונות לפני עיבוד — נשמרים מקומית בלבד
+assets/images/gallery/_originals/
