@@ -14,6 +14,36 @@ const content = require('./lib/content');
 const users = require('./lib/users');
 const adminRoutes = require('./routes/admin');
 
+/* ───────── ביטול מטמון לפי תוכן הקובץ ─────────
+   index.html מוגש עם no-cache, ולכן הזרקת ?v=<hash> לכתובות הנכסים
+   גורמת לכל שינוי בקובץ לייצר כתובת חדשה — הדפדפן מוריד אותה מיד
+   במקום להגיש גרסה ישנה מהמטמון. */
+const ASSET_URL = /(\s(?:href|src)=")(assets\/[^"?]+)(")/g;
+const versionCache = new Map();
+
+function assetVersion(rel) {
+  if (versionCache.has(rel)) return versionCache.get(rel);
+  let v = null;
+  try {
+    const buf = fs.readFileSync(path.join(config.paths.root, rel));
+    v = crypto.createHash('sha1').update(buf).digest('hex').slice(0, 10);
+  } catch {
+    /* קובץ חסר — משאירים את הכתובת כמו שהיא */
+  }
+  if (config.isProduction) versionCache.set(rel, v);
+  return v;
+}
+
+function renderHome() {
+  const html = fs.readFileSync(path.join(config.paths.root, 'index.html'), 'utf8');
+  return html.replace(ASSET_URL, (match, head, rel, tail) => {
+    const v = assetVersion(rel);
+    return v ? `${head}${rel}?v=${v}${tail}` : match;
+  });
+}
+
+let homeHtml = null;
+
 /** גיבוב סקריפטים מוטבעים (JSON-LD) כדי לשמור על CSP קשיח ללא unsafe-inline */
 function inlineScriptHashes(file) {
   if (!fs.existsSync(file)) return [];
@@ -132,8 +162,18 @@ function createApp() {
       dotfiles: 'deny',
       index: false,
       redirect: false,
-      maxAge: config.isProduction ? '7d' : 0,
-      setHeaders: (res) => res.set('X-Content-Type-Options', 'nosniff')
+      setHeaders: (res) => {
+        res.set('X-Content-Type-Options', 'nosniff');
+        if (!config.isProduction) return res.set('Cache-Control', 'no-store');
+        /* כתובת עם ?v=<hash> ייחודית לתוכן — אפשר לשמור אותה לנצח.
+           בלי חותמת, הדפדפן מאמת מחדש כדי שהחלפת קובץ באותו שם תתפוס. */
+        return res.set(
+          'Cache-Control',
+          res.req && res.req.query && res.req.query.v
+            ? 'public, max-age=31536000, immutable'
+            : 'public, max-age=300, stale-while-revalidate=86400'
+        );
+      }
     })
   );
 
@@ -143,7 +183,9 @@ function createApp() {
 
   app.get('/', (req, res) => {
     res.set('Cache-Control', 'no-cache');
-    res.sendFile(path.join(config.paths.root, 'index.html'));
+    if (!config.isProduction) return res.type('html').send(renderHome());
+    if (!homeHtml) homeHtml = renderHome();
+    return res.type('html').send(homeHtml);
   });
 
   app.use((req, res) => {
