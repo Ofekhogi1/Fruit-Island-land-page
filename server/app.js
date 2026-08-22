@@ -12,6 +12,9 @@ const config = require('./config');
 const sessions = require('./lib/sessions');
 const content = require('./lib/content');
 const users = require('./lib/users');
+const seo = require('./lib/seo');
+const leads = require('./lib/leads');
+const { createRateLimiter } = require('./lib/rateLimit');
 const adminRoutes = require('./routes/admin');
 
 /* ───────── ביטול מטמון לפי תוכן הקובץ ─────────
@@ -34,28 +37,28 @@ function assetVersion(rel) {
   return v;
 }
 
-function renderHome() {
+let templateCache = null;
+
+/** ה-HTML עם חותמות הגרסה. זהה לכל הבקשות, ולכן נבנה פעם אחת בייצור. */
+function template() {
+  if (templateCache) return templateCache;
   const html = fs.readFileSync(path.join(config.paths.root, 'index.html'), 'utf8');
-  return html.replace(ASSET_URL, (match, head, rel, tail) => {
+  const out = html.replace(ASSET_URL, (match, head, rel, tail) => {
     const v = assetVersion(rel);
     return v ? `${head}${rel}?v=${v}${tail}` : match;
   });
+  if (config.isProduction) templateCache = out;
+  return out;
 }
 
-let homeHtml = null;
+/* נגן הווידאו ב-Hero מוזן מפאנל הניהול. כל עוד לא הוגדר סרטון, האלמנט
+   נשאר ריק ללא שום תועלת — עדיף להסיר אותו מה-HTML שנשלח. */
+const HERO_VIDEO = /\s*<video class="hero__video"[\s\S]*?<\/video>/i;
 
-/** גיבוב סקריפטים מוטבעים (JSON-LD) כדי לשמור על CSP קשיח ללא unsafe-inline */
-function inlineScriptHashes(file) {
-  if (!fs.existsSync(file)) return [];
-  const html = fs.readFileSync(file, 'utf8');
-  const hashes = [];
-  const re = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
-  let match;
-  while ((match = re.exec(html))) {
-    const digest = crypto.createHash('sha256').update(match[1], 'utf8').digest('base64');
-    hashes.push(`'sha256-${digest}'`);
-  }
-  return hashes;
+function renderPage(data, nonce) {
+  let html = template();
+  if (!(data && data.hero && data.hero.video)) html = html.replace(HERO_VIDEO, '');
+  return seo.applyHead(html, data, nonce);
 }
 
 function createApp() {
@@ -64,9 +67,14 @@ function createApp() {
   app.disable('x-powered-by');
   if (config.trustProxy) app.set('trust proxy', 1);
 
-  const scriptHashes = inlineScriptHashes(path.join(config.paths.root, 'index.html'));
   /* מדיה שהועלתה דרך הפאנל מוגשת מה-CDN של Vercel Blob */
   const blobOrigin = `https://*.${config.blob.host}`;
+
+  /* nonce לכל בקשה — ה-JSON-LD נבנה מהתוכן ולכן אין לו גיבוב קבוע מראש */
+  app.use((req, res, next) => {
+    res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+    next();
+  });
 
   app.use(
     helmet({
@@ -78,7 +86,7 @@ function createApp() {
           'object-src': ["'none'"],
           'frame-ancestors': ["'none'"],
           'form-action': ["'self'"],
-          'script-src': ["'self'", ...scriptHashes],
+          'script-src': ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
           'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
           'img-src': ["'self'", 'data:', 'blob:', blobOrigin],
@@ -117,6 +125,30 @@ function createApp() {
   });
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+  /* ───────── פניות מטופס "הצעה לאירוע" ─────────
+     הפנייה נשמרת אצלנו לפני כל דבר אחר. הקישור לוואטסאפ נשאר בעמוד
+     כאפשרות המשך, אבל הוא כבר לא התנאי לכך שהפנייה תגיע אלינו. */
+
+  const leadLimiter = createRateLimiter({
+    windowMs: 10 * 60 * 1000,
+    max: 8,
+    keyGenerator: (req) => `lead:${sessions.clientIp(req)}`,
+    message: 'נשלחו כבר כמה פניות מהמכשיר הזה. נסו שוב בעוד כמה דקות או שלחו לנו וואטסאפ.'
+  });
+
+  app.post('/api/lead', leadLimiter.middleware, async (req, res, next) => {
+    try {
+      /* מלכודת הבוטים של הטופס. עונים "התקבל" כדי לא ללמד את הבוט מה נכשל. */
+      if (String((req.body && req.body.company) || '').trim() !== '') {
+        return res.status(202).json({ ok: true });
+      }
+      const lead = await leads.add(req.body);
+      return res.status(201).json({ ok: true, id: lead.id });
+    } catch (error) {
+      return next(error);
+    }
+  });
 
   /* ───────── API ניהול ───────── */
 
@@ -178,14 +210,27 @@ function createApp() {
   );
 
   app.get('/robots.txt', (req, res) => {
-    res.type('text/plain').send('User-agent: *\nDisallow: /admin\nDisallow: /api/\n');
+    res.set('Cache-Control', 'public, max-age=3600');
+    res
+      .type('text/plain')
+      .send(
+        `User-agent: *\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${seo.origin()}/sitemap.xml\n`
+      );
   });
 
-  app.get('/', (req, res) => {
-    res.set('Cache-Control', 'no-cache');
-    if (!config.isProduction) return res.type('html').send(renderHome());
-    if (!homeHtml) homeHtml = renderHome();
-    return res.type('html').send(homeHtml);
+  app.get('/sitemap.xml', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.type('application/xml').send(seo.sitemap());
+  });
+
+  app.get('/', async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-cache');
+      const data = await content.getContent();
+      return res.type('html').send(renderPage(data, res.locals.cspNonce));
+    } catch (error) {
+      return next(error);
+    }
   });
 
   app.use((req, res) => {

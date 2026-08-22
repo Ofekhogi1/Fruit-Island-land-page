@@ -265,7 +265,7 @@ const SECTIONS = [
       { key: 'formTitle', label: 'כותרת הטופס', type: 'text', max: 80 },
       { key: 'submitText', label: 'טקסט כפתור שליחה', type: 'text', max: 40 },
       { key: 'fine', label: 'טקסט משפטי קטן', type: 'textarea', max: 300 },
-      { key: 'formEndpoint', label: 'כתובת שירות טפסים (ריק = שליחה בוואטסאפ)', type: 'url' }
+      { key: 'formEndpoint', label: 'כתובת שירות טפסים חיצוני (ריק = הפניות נשמרות כאן בפאנל)', type: 'url' }
     ]
   },
   {

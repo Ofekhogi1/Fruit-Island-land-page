@@ -360,3 +360,38 @@ textarea { min-height: 92px; resize: vertical; }
   .content { padding: 18px 16px 96px; }
   .topbar { padding: 12px 16px; }
 }
+
+/* ───────── פניות מהאתר ───────── */
+
+.lead-list { margin-top: 16px; display: grid; gap: 12px; }
+
+.lead {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  background: var(--paper);
+  /* פנייה חדשה מקבלת פס צבע בצד — כדי לזהות במבט מה עוד לא טופל */
+  border-inline-start: 4px solid var(--vermillion);
+}
+.lead.is-handled { border-inline-start-color: var(--line); opacity: .62; }
+
+.lead__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.lead__head strong { font-size: 16px; }
+.lead__when { color: var(--ink-soft); font-size: 12.5px; margin-inline-start: auto; }
+
+.lead__links { display: flex; gap: 10px; margin-top: 4px; }
+.lead__link { font-size: 13.5px; font-weight: 600; direction: ltr; unicode-bidi: isolate; }
+
+.lead__facts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 13px; color: var(--ink-soft); }
+
+.lead__notes {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  padding-inline-start: 10px;
+  border-inline-start: 2px solid var(--line);
+}
+
+.lead__actions { display: flex; gap: 8px; margin-top: 12px; }
+
+.side__foot .has-badge { border-color: var(--gold-400); color: var(--gold-300); }

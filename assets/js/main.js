@@ -8,7 +8,9 @@
      הגדרות הטופס מגיעות מפאנל הניהול (assets/js/cms.js).
      כשאין שרת — נעשה שימוש בערכי ברירת המחדל שכאן.
      ──────────────────────────────────────────────────────────── */
-  var DEFAULT_FORM_ENDPOINT = '';
+  /* ברירת המחדל: הפנייה נשמרת בשרת שלנו ונקראת בפאנל הניהול.
+     אפשר להזין בפאנל כתובת של שירות טפסים חיצוני כדי לעקוף את זה. */
+  var DEFAULT_FORM_ENDPOINT = '/api/lead';
   var DEFAULT_WHATSAPP_NUMBER = '972502616666';
 
   function cms(path, fallback) {
@@ -249,7 +251,9 @@
       eventDate: $('#q-date').value,
       guests: $('#q-guests').value.trim(),
       city: $('#q-city').value.trim(),
-      notes: $('#q-notes').value.trim()
+      notes: $('#q-notes').value.trim(),
+      consent: $('#q-consent').checked,
+      company: $('#q-company').value
     };
   }
 
@@ -263,6 +267,15 @@
     if (d.city) lines.push('יישוב: ' + d.city);
     if (d.notes) lines.push('הערות: ' + d.notes);
     return lines.join('\n');
+  }
+
+  var followUp = $('#qWhatsApp');
+
+  /** מציג קישור וואטסאפ מוכן עם הפרטים, אחרי שהפנייה כבר נשמרה */
+  function showFollowUp(d) {
+    if (!followUp) return;
+    followUp.href = 'https://wa.me/' + whatsappNumber() + '?text=' + encodeURIComponent(toWhatsAppText(d));
+    followUp.hidden = false;
   }
 
   function openWhatsApp(d) {
@@ -299,12 +312,27 @@
       body: JSON.stringify(data)
     })
       .then(function (res) {
-        if (!res.ok) throw new Error('bad response');
+        return res.json().catch(function () { return {}; }).then(function (body) {
+          if (res.ok) return body;
+          var error = new Error(body.error || 'bad response');
+          /* 4xx = משהו בטופס שהמשתמש יכול לתקן. 5xx/נפילת רשת = הבעיה אצלנו. */
+          error.userFixable = res.status >= 400 && res.status < 500;
+          throw error;
+        });
+      })
+      .then(function () {
         form.reset();
         clearErrors();
-        setStatus('הפנייה נשלחה. נחזור אליכם בהקדם בשעות הפעילות.', 'ok');
+        setStatus('הפנייה נשלחה ונשמרה אצלנו. נחזור אליכם בהקדם בשעות הפעילות.', 'ok');
+        /* הפרטים כבר אצלנו — וואטסאפ נשאר קיצור דרך למי שרוצה תשובה עכשיו,
+           ולא הדרך היחידה שהפנייה מגיעה. */
+        showFollowUp(data);
       })
-      .catch(function () {
+      .catch(function (error) {
+        if (error.userFixable) {
+          setStatus(error.message, 'bad');
+          return;
+        }
         setStatus('השליחה לא הצליחה. פותחים וואטסאפ כדי שלא תאבדו את הפרטים.', 'bad');
         openWhatsApp(data);
       })
@@ -312,7 +340,7 @@
   });
 
   $$('#q-name, #q-phone, #q-consent').forEach(function (input) {
-    input.addEventListener('input', function () { setError(input, ''); });
+    input.addEventListener('input', function () { setError(input, ''); if (followUp) followUp.hidden = true; });
     input.addEventListener('change', function () { setError(input, ''); });
   });
 })();

@@ -440,6 +440,117 @@
       .catch(function (error) { media.status.textContent = error.message; });
   });
 
+  /* ───────── פניות מהאתר ───────── */
+
+  var leadsBtn = document.getElementById('leadsBtn');
+
+  /** מעדכן את מונה הפניות שלא טופלו על הכפתור בתפריט */
+  function paintLeadCount(list) {
+    var open = list.filter(function (lead) { return !lead.handled; }).length;
+    leadsBtn.textContent = open ? 'פניות מהאתר (' + open + ')' : 'פניות מהאתר';
+    leadsBtn.classList.toggle('has-badge', open > 0);
+  }
+
+  var intlPhone = function (phone) {
+    var digits = String(phone || '').replace(/\D/g, '');
+    return digits.charAt(0) === '0' ? '972' + digits.slice(1) : digits;
+  };
+
+  function leadRow(lead, refresh) {
+    var row = el('div', 'lead' + (lead.handled ? ' is-handled' : ''));
+
+    var head = el('div', 'lead__head');
+    head.appendChild(el('strong', null, lead.name));
+    head.appendChild(el('span', 'lead__when', new Date(lead.receivedAt).toLocaleString('he-IL')));
+    row.appendChild(head);
+
+    var call = el('a', 'lead__link', lead.phone);
+    call.href = 'tel:' + String(lead.phone).replace(/[^\d+]/g, '');
+    var wa = el('a', 'lead__link', 'וואטסאפ');
+    wa.href = 'https://wa.me/' + intlPhone(lead.phone);
+    wa.target = '_blank';
+    wa.rel = 'noopener noreferrer';
+    var links = el('div', 'lead__links');
+    links.appendChild(call);
+    links.appendChild(wa);
+    row.appendChild(links);
+
+    var facts = [
+      ['אירוע', lead.eventType],
+      ['תאריך', lead.eventDate],
+      ['אורחים', lead.guests],
+      ['יישוב', lead.city]
+    ].filter(function (pair) { return pair[1]; });
+
+    if (facts.length) {
+      var dl = el('div', 'lead__facts');
+      facts.forEach(function (pair) {
+        dl.appendChild(el('span', null, pair[0] + ': ' + pair[1]));
+      });
+      row.appendChild(dl);
+    }
+
+    if (lead.notes) row.appendChild(el('p', 'lead__notes', lead.notes));
+
+    var actions = el('div', 'lead__actions');
+    actions.appendChild(
+      button(lead.handled ? 'החזרה לטיפול' : 'סימון כטופל', 'btn--ghost btn--sm', function () {
+        api('POST', '/leads/handled', { id: lead.id, handled: !lead.handled })
+          .then(refresh)
+          .catch(function (error) { toast(error.message, 'bad'); });
+      })
+    );
+    actions.appendChild(
+      button('מחיקה', 'btn--danger btn--sm', function () {
+        if (!window.confirm('למחוק את הפנייה של ' + lead.name + '?')) return;
+        api('DELETE', '/leads', { id: lead.id })
+          .then(refresh)
+          .catch(function (error) { toast(error.message, 'bad'); });
+      })
+    );
+    row.appendChild(actions);
+    return row;
+  }
+
+  function showLeads() {
+    state.view = 'leads';
+    renderNav();
+    elTitle.textContent = 'פניות מהאתר';
+    elContent.textContent = '';
+
+    var card = el('div', 'card');
+    card.appendChild(el('h2', null, 'פניות מהאתר'));
+    card.appendChild(
+      el('p', 'muted', 'כל פנייה מטופס "הצעה לאירוע" נשמרת כאן, גם אם הפונה לא המשיך לוואטסאפ.')
+    );
+
+    var csv = el('a', 'btn btn--ghost btn--sm', 'ייצוא לאקסל (CSV)');
+    csv.href = '/api/admin/leads.csv';
+    card.appendChild(csv);
+
+    var list = el('div', 'lead-list');
+    card.appendChild(list);
+    elContent.appendChild(card);
+    elContent.scrollTop = 0;
+
+    api('GET', '/leads')
+      .then(function (data) {
+        var all = data.leads || [];
+        paintLeadCount(all);
+        list.textContent = '';
+        if (!all.length) {
+          list.appendChild(el('p', 'muted', 'אין עדיין פניות.'));
+          return;
+        }
+        all.forEach(function (lead) {
+          list.appendChild(leadRow(lead, showLeads));
+        });
+      })
+      .catch(function (error) { toast(error.message, 'bad'); });
+  }
+
+  leadsBtn.addEventListener('click', showLeads);
+
   /* ───────── גיבויים והגדרות ───────── */
 
   function showTools() {
@@ -572,6 +683,9 @@
         state.content = results[1].content;
         markClean('הכול שמור');
         showSection(state.activeSection || state.sections[0].id);
+        api('GET', '/leads')
+          .then(function (data) { paintLeadCount(data.leads || []); })
+          .catch(function () { /* המונה הוא נוחות בלבד — לא מפריע לטעינה */ });
       })
       .catch(function (error) {
         if (error.message !== 'unauthorized') toast(error.message, 'bad');

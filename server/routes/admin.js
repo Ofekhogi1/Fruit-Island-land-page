@@ -7,6 +7,7 @@ const sessions = require('../lib/sessions');
 const users = require('../lib/users');
 const content = require('../lib/content');
 const uploads = require('../lib/uploads');
+const leads = require('../lib/leads');
 const { SECTIONS } = require('../lib/schema');
 const { createRateLimiter } = require('../lib/rateLimit');
 const { validateStrength } = require('../lib/passwords');
@@ -185,6 +186,44 @@ router.delete('/media', writeLimiter.middleware, async (req, res, next) => {
       return res.status(409).json({ error: 'הקובץ בשימוש בעמוד — החליפו אותו קודם ואז מחקו' });
     }
     await uploads.deleteMedia(target);
+    return res.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/* ───────── פניות מהטופס ───────── */
+
+router.get('/leads', async (req, res, next) => {
+  try {
+    return res.json({ leads: await leads.list({ limit: 200 }) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/leads.csv', async (req, res, next) => {
+  try {
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.set('Content-Disposition', `attachment; filename="fruit-island-leads-${stamp}.csv"`);
+    return res.type('text/csv; charset=utf-8').send(leads.toCsv(await leads.list({ limit: 200 })));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/leads/handled', writeLimiter.middleware, async (req, res, next) => {
+  try {
+    const lead = await leads.setHandled(String(req.body?.id || ''), Boolean(req.body?.handled));
+    return res.json({ ok: true, lead });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/leads', writeLimiter.middleware, async (req, res, next) => {
+  try {
+    await leads.remove(String(req.body?.id || ''));
     return res.json({ ok: true });
   } catch (error) {
     return next(error);

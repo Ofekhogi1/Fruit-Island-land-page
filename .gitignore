@@ -6,6 +6,7 @@ node_modules/
 server/data/users.json
 server/data/content.json
 server/data/backups/
+server/data/leads/
 assets/images/uploads/
 assets/video/uploads/
 
